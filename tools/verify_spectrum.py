@@ -1,6 +1,6 @@
 """Verify the generator's spectral slopes match the textbook targets.
 
-Pink noise should drop ~3 dB per octave, brown ~6 dB per octave.
+Brown drops ~6 dB per octave, pink ~3, white is flat, blue rises ~3, violet ~6.
 Mirrors the generator math in index.html. Run: python tools/verify_spectrum.py
 Requires: numpy, scipy
 """
@@ -25,15 +25,28 @@ def brown(x):
     # Leaky integrator: br = 0.998*br + 0.022*w
     return lfilter([0.022], [1, -0.998], x)
 
+def blue(p):
+    # Differentiated pink, same as index.html: (p[n] - p[n-1]) * 1.65
+    return np.diff(p, prepend=0) * 1.65
+
+def violet(x):
+    # Differentiated white: (w[n] - w[n-1]) * 0.233
+    return np.diff(x, prepend=0) * 0.233
+
 def report(x, name, target):
     f, p = welch(x, FS, nperseg=2**16)
     bands = [40, 80, 160, 320, 640, 1280, 2560, 5120, 10240]
     db = [10*np.log10(p[(f >= b/1.06) & (f <= b*1.06)].mean()) for b in bands]
     steps = [db[i+1] - db[i] for i in range(len(db) - 1)]
-    print(f"{name} (target {target:+.1f} dB/octave)")
+    rms = np.sqrt(np.mean(x ** 2))
+    print(f"{name} (target {target:+.1f} dB/octave, rms {rms:.3f})")
     for i, s in enumerate(steps):
         ok = "ok" if abs(s - target) <= 0.6 else "OFF"
         print(f"  {bands[i]:>5}-{bands[i+1]:<5} Hz  {s:+.1f}  {ok}")
 
-report(pink(w), "Pink", -3.0)
+p = pink(w)
 report(brown(w), "Brown", -6.0)
+report(p, "Pink", -3.0)
+report(w * 0.33, "White", 0.0)
+report(blue(p), "Blue", 3.0)
+report(violet(w), "Violet", 6.0)
