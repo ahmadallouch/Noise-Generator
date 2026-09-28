@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A's Noise Generator</title>
+<meta name="description" content="Brown, pink, white, blue, and violet noise, made live in your browser. Works offline.">
+<meta name="theme-color" content="#E7E1DC">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="A's Noise">
+<link rel="preload" href="fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:Figtree;font-style:normal;font-weight:300 900;font-display:swap;src:url(fonts/figtree-latin.woff2) format("woff2")}
+@font-face{font-family:Fraunces;font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/fraunces-latin.woff2) format("woff2")}
+/* Neutral base. The tinted values (--bg, --surface, --line, --track, --accent) are
+   recomputed by JS from the noise color and drift toward it slowly. */
+:root{
+  --bg0:#ECEAE6;--surface0:#F6F5F2;--line0:#D9D6D0;--track0:#D3D0CA;
+  --ink:#22211F;--muted:#6B6863;
+  --bg:var(--bg0);--surface:var(--surface0);--line:var(--line0);--track:var(--track0);--accent:#C9798C;
+  --c-brown:#8A5A3B;--c-pink:#C9798C;--c-white:#8E8B86;--c-blue:#4F7BA8;--c-violet:#7D63A8;
+  --tint-bg:.10;--tint-surface:.05;--tint-line:.16;--tint-track:.20;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg0:#151514;--surface0:#1D1D1B;--line0:#302F2C;--track0:#34332F;--ink:#EEECE8;--muted:#A19E98;
+    --c-brown:#C08E6A;--c-pink:#E6A0B0;--c-white:#C4C1BB;--c-blue:#86ABD4;--c-violet:#AE96D6;
+    --tint-bg:.07;--tint-surface:.05;--tint-line:.14;--tint-track:.18}
+}
+:root[data-theme="dark"]{--bg0:#151514;--surface0:#1D1D1B;--line0:#302F2C;--track0:#34332F;--ink:#EEECE8;--muted:#A19E98;
+  --c-brown:#C08E6A;--c-pink:#E6A0B0;--c-white:#C4C1BB;--c-blue:#86ABD4;--c-violet:#AE96D6;
+  --tint-bg:.07;--tint-surface:.05;--tint-line:.14;--tint-track:.18}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:620px;margin:0 auto;padding:18px 20px 56px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;color:var(--muted);font-size:.9rem;font-weight:500}
+.gh{display:grid;place-items:center;width:40px;height:40px;margin-right:-8px;border-radius:50%;color:var(--ink);opacity:.75}
+.gh:hover{opacity:1}
+.gh svg{width:22px;height:22px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+h1{font-family:Fraunces,Georgia,"Times New Roman",serif;font-weight:600;font-size:clamp(2.1rem,8vw,3rem);line-height:1.02;margin:0;letter-spacing:-.015em;font-variation-settings:"opsz" 144}
+.sub{margin:6px 0 0;color:var(--muted);font-size:.95rem}
+#play{flex:none;width:76px;height:76px;border-radius:50%;border:0;background:var(--accent);color:#fff;cursor:pointer;display:grid;place-items:center;transition:transform .15s ease}
+#play:active{transform:scale(.95)}
+#play svg{width:30px;height:30px}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.scope{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:10px 10px 6px}
+canvas{display:block;width:100%;height:170px}
+.caption{color:var(--muted);font-size:.85rem;margin:8px 4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pill{font:inherit;font-size:.92rem;border:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.pill[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--line)}
+.colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}
+.color{font:inherit;text-align:left;border:1px solid var(--line);background:transparent;color:var(--ink);padding:10px 14px;border-radius:14px;cursor:pointer}
+.color[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.color b{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.95rem}
+.color small{display:block;font-size:.8rem;opacity:.75;margin-top:2px}
+h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.35rem;margin:30px 0 4px}
+.ctl{padding:16px 0;border-bottom:1px solid var(--line)}
+.ctl:last-child{border-bottom:0}
+.ctl-name{display:block;font-weight:600}
+.ctl-hint{color:var(--muted);font-size:.88rem;margin:2px 0 10px}
+.ends{display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem;margin-top:4px}
+.ctl.dim{opacity:.45}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--track)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--track)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--accent);margin-top:-9px;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--surface)}
+.sleep-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#countdown{color:var(--muted);font-size:.9rem;min-height:1.4em;margin-top:8px}
+details.adv{margin-top:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+details.adv>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:16px 0;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.35rem}
+details.adv>summary::-webkit-details-marker{display:none}
+details.adv>summary::after{content:"";width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-3px,-3px);transition:transform .2s ease}
+details.adv[open]>summary::after{transform:rotate(225deg) translate(-3px,-3px)}
+details.adv h3{font-weight:600;font-size:1rem;margin:4px 0 0}
+.presets{margin:8px 0 12px}
+footer{color:var(--muted);font-size:.85rem;margin-top:36px;line-height:1.55}
+footer a{color:inherit}
+@media (prefers-reduced-motion:reduce){#play,details.adv>summary::after{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="topbar">
+    <span>A's Noise Generator</span>
+    <a class="gh" href="https://github.com/ahmadallouch/Noise-Generator" target="_blank" rel="noopener" aria-label="Source code on GitHub" title="Source code on GitHub">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+  </div>
+
+  <header>
+    <div>
+      <h1 id="name">Pink noise</h1>
+      <p class="sub" id="status">Made live on your device. It never repeats.</p>
+    </div>
+    <button id="play" aria-label="Play">
+      <svg id="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+    </button>
+  </header>
+
+  <div class="scope">
+    <canvas id="cv" aria-label="Sound shape"></canvas>
+  </div>
+  <p class="caption">Left is deep, right is bright. Taller means louder at that pitch. The shaded shape is your settings; the thin line is what is playing right now.</p>
+
+  <h2>Noise color</h2>
+  <div class="colors" id="colors"></div>
+
+  <div id="main-controls"></div>
+
+  <h2>Stop after</h2>
+  <div class="sleep-row" id="sleep"></div>
+  <div id="countdown"></div>
+
+  <details class="adv" id="adv">
+    <summary>Advanced</summary>
+    <h3>Presets</h3>
+    <div class="chips presets" id="presets"></div>
+    <div id="controls"></div>
+  </details>
+
+  <footer>
+    Nothing is downloaded and nothing leaves your device. <span id="offline"></span>
+    If the sound cuts out when your screen locks, reopen this page; some browsers pause web audio in the background.
+    <br><a href="https://github.com/ahmadallouch/Noise-Generator" target="_blank" rel="noopener">Source on GitHub</a>
+  </footer>
+</main>
+
+<audio id="out" playsinline></audio>
+
+<script>
+(function(){
+/* tone runs 0..400: 0 brown, 100 pink, 200 white, 300 blue, 400 violet, blends in between.
+   0..100 is the original brown-to-pink range, so older saved settings still mean the same thing. */
+const COLORS=[
+  {n:"Brown",v:"--c-brown",slope:-6,use:"Deep. Sleep and focus"},
+  {n:"Pink",v:"--c-pink",slope:-3,use:"Soft. Sleep and calm"},
+  {n:"White",v:"--c-white",slope:0,use:"Even. Masks voices"},
+  {n:"Blue",v:"--c-blue",slope:3,use:"Crisp. Masks high hiss"},
+  {n:"Violet",v:"--c-violet",slope:6,use:"Sharp. Tinnitus masking"}
+];
+const TMAX=(COLORS.length-1)*100;
+const DEF={tone:50,weight:0,hiss:35,relief:25,move:0,pace:35,width:70,vol:40};
+const PRESETS={
+  "Deep focus":{tone:10,weight:30,hiss:45,relief:35,move:0,pace:35,width:60,vol:40},
+  "Steady rain":{tone:90,weight:0,hiss:25,relief:30,move:10,pace:60,width:100,vol:38},
+  "Ocean":{tone:35,weight:20,hiss:50,relief:25,move:75,pace:18,width:90,vol:42},
+  "Sleep":{tone:0,weight:15,hiss:70,relief:45,move:20,pace:10,width:70,vol:30},
+  "Airplane cabin":{tone:30,weight:60,hiss:55,relief:15,move:0,pace:35,width:40,vol:40}
+};
+const MAIN=[
+  {k:"vol",name:"Volume",hint:"Keep it low enough that you could still hear someone talk.",l:"Quiet",r:"Loud"}
+];
+const CONTROLS=[
+  {k:"tone",name:"Color blend",hint:"Brown, pink, white, blue, violet from left to right, with blends in between.",l:"Deeper",r:"Brighter",max:TMAX},
+  {k:"weight",name:"Body",hint:"Adds low-end weight, like a distant engine.",l:"Light",r:"Heavy"},
+  {k:"hiss",name:"Hiss",hint:"Rounds off the top. Far right sounds like it is behind a wall.",l:"Crisp",r:"Muffled"},
+  {k:"relief",name:"Ear pressure",hint:"Trims the very deepest rumble, which can feel like pressure with noise cancelling on.",l:"Full",r:"Relieved"},
+  {k:"move",name:"Movement",hint:"Slowly rises and falls so it feels less static.",l:"Still",r:"Waves"},
+  {k:"pace",name:"Wave speed",hint:"How long each rise and fall takes.",l:"Slow",r:"Quicker"},
+  {k:"width",name:"Space",hint:"Wide plays different noise in each ear, so it surrounds you.",l:"Centered",r:"Wide"}
+];
+const SLEEP=[["Off",0],["15 min",15],["30 min",30],["1 hr",60],["2 hr",120]];
+
+let S={...DEF};
+try{const s=JSON.parse(localStorage.getItem("noise-settings")||"null");if(s)S={...DEF,...s}}catch(e){}
+S.tone=Math.min(TMAX,Math.max(0,+S.tone||0));
+function save(){try{localStorage.setItem("noise-settings",JSON.stringify(S))}catch(e){}}
+
+const map={
+  weightDb:v=>v/100*10,
+  hissHz:v=>18000*Math.pow(900/18000,v/100),
+  reliefHz:v=>12*Math.pow(160/12,v/100),
+  paceHz:v=>0.03*Math.pow(8,v/100),
+  vol:v=>Math.pow(v/100,2)*0.9
+};
+
+/* ---------- audio ---------- */
+let ctx=null,A=null,playing=false,sleepMin=0,sleepEnd=0;
+const outEl=document.getElementById("out");
+
+function mkGen(){
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,br=0,pp=0,wp=0;
+  return function(o){
+    const w=Math.random()*2-1;
+    b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.969*b2+w*.153852;
+    b3=.8665*b3+w*.3104856;b4=.55*b4+w*.5329522;b5=-.7616*b5-w*.016898;
+    o.p=(b0+b1+b2+b3+b4+b5+b6+w*.5362)*.11;b6=w*.115926;
+    br=.998*br+w*.022;o.b=br;
+    // White, blue (differentiated pink), violet (differentiated white).
+    // Gains match each color's RMS to pink/brown (about 0.19), see tools/verify_spectrum.py.
+    o.w=w*.33;
+    o.bl=(o.p-pp)*1.65;pp=o.p;
+    o.v=(w-wp)*.233;wp=w;
+  };
+}
+function pick(o,k){return k===0?o.b:k===1?o.p:k===2?o.w:k===3?o.bl:o.v}
+function mix(o,t){
+  // Equal-power crossfade between the two neighbouring colors.
+  const k=Math.min(COLORS.length-2,Math.floor(t)),f=t-k;
+  return Math.cos(f*Math.PI/2)*pick(o,k)+Math.sin(f*Math.PI/2)*pick(o,k+1);
+}
+
+function build(){
+  ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const proc=ctx.createScriptProcessor(4096,0,2);
+  const g=[mkGen(),mkGen(),mkGen()],o={p:0,b:0,w:0,bl:0,v:0};
+  let ct=S.tone/100,cw=S.width/100;
+  proc.onaudioprocess=function(e){
+    const L=e.outputBuffer.getChannelData(0),R=e.outputBuffer.getChannelData(1),n=L.length;
+    const dt=(S.tone/100-ct)/n,dw=(S.width/100-cw)/n;
+    for(let i=0;i<n;i++){
+      ct+=dt;cw+=dw;
+      g[0](o);const l=mix(o,ct);
+      g[1](o);const r=mix(o,ct);
+      g[2](o);const m=mix(o,ct);
+      const a=Math.sqrt(cw),c=Math.sqrt(1-cw);
+      L[i]=a*l+c*m;R[i]=a*r+c*m;
+    }
+    if(sleepEnd&&ctx.currentTime>=sleepEnd){sleepEnd=0;setTimeout(function(){stop();sleepMin=0;renderSleep()},0)}
+  };
+  const weight=ctx.createBiquadFilter();weight.type="lowshelf";weight.frequency.value=150;
+  const hiss=ctx.createBiquadFilter();hiss.type="lowpass";hiss.Q.value=.5;
+  const relief=ctx.createBiquadFilter();relief.type="highpass";relief.Q.value=.6;
+  const wave=ctx.createGain(),master=ctx.createGain(),sleep=ctx.createGain();
+  master.gain.value=0;
+  const an=ctx.createAnalyser();an.fftSize=4096;an.smoothingTimeConstant=.85;
+  proc.connect(weight);weight.connect(hiss);hiss.connect(relief);relief.connect(wave);
+  wave.connect(master);master.connect(sleep);sleep.connect(an);
+
+  const o1=ctx.createOscillator(),o2=ctx.createOscillator();
+  const lg1=ctx.createGain(),lg2=ctx.createGain(),ld1=ctx.createGain(),ld2=ctx.createGain();
+  lg1.gain.value=lg2.gain.value=ld1.gain.value=ld2.gain.value=0;
+  o1.connect(lg1);lg1.connect(wave.gain);o2.connect(lg2);lg2.connect(wave.gain);
+  o1.connect(ld1);ld1.connect(hiss.detune);o2.connect(ld2);ld2.connect(hiss.detune);
+  o1.start();o2.start();
+
+  const dest=ctx.createMediaStreamDestination();an.connect(dest);
+  const keep=ctx.createGain();keep.gain.value=0;an.connect(keep);keep.connect(ctx.destination);
+  outEl.srcObject=dest.stream;
+
+  A={weight,hiss,relief,wave,master,sleep,an,o1,o2,lg1,lg2,ld1,ld2,fallback:false};
+}
+
+function apply(){
+  if(!A)return;
+  const t=ctx.currentTime,k=.08,d=S.move/100,f=map.paceHz(S.pace);
+  A.weight.gain.setTargetAtTime(map.weightDb(S.weight),t,k);
+  A.hiss.frequency.setTargetAtTime(map.hissHz(S.hiss),t,k);
+  A.relief.frequency.setTargetAtTime(map.reliefHz(S.relief),t,k);
+  A.o1.frequency.setTargetAtTime(f,t,.3);A.o2.frequency.setTargetAtTime(f*1.618,t,.3);
+  A.wave.gain.setTargetAtTime(1-d*.35,t,.2);
+  A.lg1.gain.setTargetAtTime(d*.2,t,.2);A.lg2.gain.setTargetAtTime(d*.15,t,.2);
+  A.ld1.gain.setTargetAtTime(d*500,t,.2);A.ld2.gain.setTargetAtTime(d*300,t,.2);
+  if(playing)A.master.gain.setTargetAtTime(map.vol(S.vol),t,.1);
+}
+
+async function play(){
+  if(!A)build();
+  await ctx.resume();
+  try{await outEl.play()}catch(e){if(!A.fallback){A.an.connect(ctx.destination);A.fallback=true}}
+  playing=true;apply();
+  const t=ctx.currentTime;
+  A.master.gain.cancelScheduledValues(t);A.master.gain.setValueAtTime(A.master.gain.value,t);
+  A.master.gain.setTargetAtTime(map.vol(S.vol),t,.8);
+  armSleep();
+  if("mediaSession" in navigator){
+    try{
+      navigator.mediaSession.metadata=new MediaMetadata({title:nameFor(S.tone),artist:"A's Noise Generator"});
+      navigator.mediaSession.setActionHandler("play",play);
+      navigator.mediaSession.setActionHandler("pause",stop);
+      navigator.mediaSession.playbackState="playing";
+    }catch(e){}
+  }
+  ui();
+}
+function stop(){
+  if(!A)return;
+  playing=false;
+  const t=ctx.currentTime;
+  A.master.gain.cancelScheduledValues(t);A.master.gain.setValueAtTime(A.master.gain.value,t);
+  A.master.gain.setTargetAtTime(0,t,.15);
+  sleepEnd=0;A.sleep.gain.cancelScheduledValues(t);A.sleep.gain.setValueAtTime(1,t);
+  setTimeout(function(){if(!playing){ctx.suspend();outEl.pause()}},800);
+  if("mediaSession" in navigator){try{navigator.mediaSession.playbackState="paused"}catch(e){}}
+  ui();
+}
+function armSleep(){
+  if(!A)return;
+  const t=ctx.currentTime;
+  A.sleep.gain.cancelScheduledValues(t);A.sleep.gain.setValueAtTime(1,t);
+  if(sleepMin&&playing){
+    sleepEnd=t+sleepMin*60;
+    A.sleep.gain.setValueAtTime(1,sleepEnd-60);
+    A.sleep.gain.linearRampToValueAtTime(0,sleepEnd);
+  }else sleepEnd=0;
+}
+
+/* ---------- theme ---------- */
+const $=id=>document.getElementById(id);
+const root=document.documentElement,metaTheme=document.querySelector('meta[name="theme-color"]');
+function hex(c){c=c.trim().replace("#","");return[0,2,4].map(i=>parseInt(c.substr(i,2),16))}
+const rgb=c=>"rgb("+c.map(Math.round).join(",")+")";
+const lerp=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+let P=null;
+function readPalette(){
+  const cs=getComputedStyle(root),v=n=>cs.getPropertyValue(n).trim();
+  P={colors:COLORS.map(c=>hex(v(c.v))),bg:hex(v("--bg0")),surface:hex(v("--surface0")),line:hex(v("--line0")),track:hex(v("--track0")),
+     ink:v("--ink"),muted:v("--muted"),
+     amt:{bg:+v("--tint-bg"),surface:+v("--tint-surface"),line:+v("--tint-line"),track:+v("--tint-track")}};
+}
+function targetColor(){
+  const t=S.tone/100,k=Math.min(COLORS.length-2,Math.floor(t));
+  return lerp(P.colors[k],P.colors[k+1],t-k);
+}
+// The accent (play button, sliders, graph) follows quickly; the page tint drifts slowly.
+const ACCENT_TAU=.25,TINT_TAU=4;
+let accentCur=null,tintCur=null,lastTs=0,lastCss="";
+function themeStep(ts){
+  const tgt=targetColor();
+  const dt=lastTs?Math.min(1,(ts-lastTs)/1000):1;lastTs=ts;
+  if(!accentCur){accentCur=tgt.slice();tintCur=tgt.slice()}
+  accentCur=lerp(accentCur,tgt,1-Math.exp(-dt/ACCENT_TAU));
+  tintCur=lerp(tintCur,tgt,1-Math.exp(-dt/TINT_TAU));
+  const bg=rgb(lerp(P.bg,tintCur,P.amt.bg));
+  const css=[rgb(accentCur),bg,rgb(lerp(P.surface,tintCur,P.amt.surface)),rgb(lerp(P.line,tintCur,P.amt.line)),rgb(lerp(P.track,tintCur,P.amt.track))];
+  const key=css.join("|");
+  if(key!==lastCss){
+    lastCss=key;
+    root.style.setProperty("--accent",css[0]);root.style.setProperty("--bg",css[1]);
+    root.style.setProperty("--surface",css[2]);root.style.setProperty("--line",css[3]);root.style.setProperty("--track",css[4]);
+    metaTheme.setAttribute("content",bg);
+  }
+}
+readPalette();
+const mq=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)");
+if(mq&&mq.addEventListener)mq.addEventListener("change",()=>{readPalette();accentCur=tintCur=null;renderColors();drawStatic=true});
+
+/* ---------- UI ---------- */
+function nameFor(t){
+  const k=Math.min(COLORS.length-2,Math.floor(t/100)),f=t-k*100,a=COLORS[k].n,b=COLORS[k+1].n;
+  return f<=15?a+" noise":f>=85?b+" noise":f<50?"Mostly "+a.toLowerCase():"Mostly "+b.toLowerCase();
+}
+function ui(){
+  $("name").textContent=nameFor(S.tone);
+  $("play").setAttribute("aria-label",playing?"Pause":"Play");
+  $("icon").innerHTML=playing?'<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>':'<path d="M8 5.5v13l11-6.5z"/>';
+  $("status").textContent=playing?"Playing. Adjust anything, it changes smoothly.":"Made live on your device. It never repeats.";
+  document.querySelectorAll(".ctl[data-k=pace]").forEach(el=>el.classList.toggle("dim",S.move==0));
+  const match=Object.keys(PRESETS).find(n=>Object.keys(DEF).every(k=>PRESETS[n][k]==S[k]));
+  document.querySelectorAll("#presets .pill").forEach(b=>b.setAttribute("aria-pressed",b.textContent===match?"true":"false"));
+  document.querySelectorAll("#colors .color").forEach((b,i)=>b.setAttribute("aria-pressed",S.tone===i*100?"true":"false"));
+  if(playing&&"mediaSession" in navigator&&navigator.mediaSession.metadata){try{navigator.mediaSession.metadata.title=nameFor(S.tone)}catch(e){}}
+  drawStatic=true;
+}
+
+function renderColors(){
+  const w=$("colors");w.innerHTML="";
+  COLORS.forEach((c,i)=>{
+    const b=document.createElement("button");b.className="color";
+    b.innerHTML='<b><span class="dot" style="background:'+rgb(P.colors[i])+'"></span>'+c.n+'</b><small>'+c.use+'</small>';
+    b.onclick=()=>{S.tone=i*100;syncSliders();save();apply();ui()};
+    w.appendChild(b);
+  });
+}
+renderColors();
+
+const pw=$("presets");
+Object.keys(PRESETS).forEach(n=>{
+  const b=document.createElement("button");b.className="pill";b.textContent=n;
+  b.onclick=()=>{S={...S,...PRESETS[n]};syncSliders();save();apply();ui()};
+  pw.appendChild(b);
+});
+
+function addSlider(parent,c){
+  const d=document.createElement("div");d.className="ctl";d.dataset.k=c.k;
+  const id="s-"+c.k;
+  d.innerHTML='<label class="ctl-name" for="'+id+'">'+c.name+'</label>'+
+    '<div class="ctl-hint">'+c.hint+'</div>'+
+    '<input type="range" id="'+id+'" min="0" max="'+(c.max||100)+'" step="1">'+
+    '<div class="ends"><span>'+c.l+'</span><span>'+c.r+'</span></div>';
+  parent.appendChild(d);
+  const inp=d.querySelector("input");
+  inp.addEventListener("input",()=>{S[c.k]=+inp.value;apply();ui()});
+  inp.addEventListener("change",save);
+}
+MAIN.forEach(c=>addSlider($("main-controls"),c));
+CONTROLS.forEach(c=>addSlider($("controls"),c));
+function syncSliders(){MAIN.concat(CONTROLS).forEach(c=>{$("s-"+c.k).value=S[c.k]})}
+
+const adv=$("adv");
+try{adv.open=localStorage.getItem("noise-advanced")==="1"}catch(e){}
+adv.addEventListener("toggle",()=>{try{localStorage.setItem("noise-advanced",adv.open?"1":"0")}catch(e){}});
+
+function renderSleep(){
+  const w=$("sleep");w.innerHTML="";
+  SLEEP.forEach(([l,m])=>{
+    const b=document.createElement("button");b.className="pill";b.textContent=l;
+    b.setAttribute("aria-pressed",m===sleepMin?"true":"false");
+    b.onclick=()=>{sleepMin=m;armSleep();renderSleep()};
+    w.appendChild(b);
+  });
+}
+setInterval(function(){
+  const el=$("countdown");
+  if(sleepEnd&&ctx&&playing){
+    const s=Math.max(0,Math.round(sleepEnd-ctx.currentTime));
+    el.textContent="Fades out and stops in "+Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  }else el.textContent=sleepMin?"The timer starts when you press play. It fades out over the last minute.":"";
+},500);
+
+$("play").onclick=()=>playing?stop():play();
+document.addEventListener("keydown",e=>{if(e.code==="Space"&&!/^(INPUT|BUTTON|SUMMARY|A)$/.test(e.target.tagName)){e.preventDefault();playing?stop():play()}});
+
+/* ---------- drawing ---------- */
+const cv=$("cv"),g2=cv.getContext("2d");
+const OC=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,44100,44100);
+const dW=OC.createBiquadFilter();dW.type="lowshelf";dW.frequency.value=150;
+const dH=OC.createBiquadFilter();dH.type="lowpass";dH.Q.value=.5;
+const dR=OC.createBiquadFilter();dR.type="highpass";dR.Q.value=.6;
+const F0=25,F1=18000,NP=160;
+const freqs=new Float32Array(NP);for(let i=0;i<NP;i++)freqs[i]=F0*Math.pow(F1/F0,i/(NP-1));
+const m1=new Float32Array(NP),m2=new Float32Array(NP),m3=new Float32Array(NP),ph=new Float32Array(NP);
+let drawStatic=true,W=0,H=0,dpr=1,staticDb=null;
+
+function resize(){
+  dpr=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;
+  cv.width=W*dpr;cv.height=H*dpr;drawStatic=true;
+}
+window.addEventListener("resize",resize);
+
+function shape(){
+  dW.gain.value=map.weightDb(S.weight);dH.frequency.value=map.hissHz(S.hiss);dR.frequency.value=map.reliefHz(S.relief);
+  dW.getFrequencyResponse(freqs,m1,ph);dH.getFrequencyResponse(freqs,m2,ph);dR.getFrequencyResponse(freqs,m3,ph);
+  const t=S.tone/100,k=Math.min(COLORS.length-2,Math.floor(t)),f=t-k;
+  const ca=Math.cos(f*Math.PI/2)**2,cb=Math.sin(f*Math.PI/2)**2,sa=COLORS[k].slope/10,sb=COLORS[k+1].slope/10,out=new Float32Array(NP);
+  let mx=-1e9;
+  for(let i=0;i<NP;i++){
+    const oct=Math.log2(freqs[i]/F0);
+    const p=ca*Math.pow(10,sa*oct)+cb*Math.pow(10,sb*oct);
+    out[i]=10*Math.log10(p)+20*Math.log10(m1[i]*m2[i]*m3[i]+1e-9);
+    if(out[i]>mx)mx=out[i];
+  }
+  for(let i=0;i<NP;i++)out[i]-=mx;
+  return out;
+}
+const RANGE=60;
+const yOf=db=>{const top=14,bot=H-22;return top+Math.min(1,Math.max(0,-db/RANGE))*(bot-top)};
+const xOf=i=>i/(NP-1)*W;
+
+let liveBuf=null;
+function frame(ts){
+  themeStep(ts);
+  if(drawStatic){staticDb=shape();drawStatic=false}
+  const ink=P.ink,muted=P.muted,line=root.style.getPropertyValue("--line")||rgb(P.line);
+  const col=rgb(accentCur);
+  g2.setTransform(dpr,0,0,dpr,0,0);g2.clearRect(0,0,W,H);
+
+  g2.fillStyle=muted;g2.font="11px Figtree, system-ui, sans-serif";g2.textAlign="center";
+  g2.strokeStyle=line;g2.lineWidth=1;
+  [[50,"50"],[200,"200"],[1000,"1k"],[5000,"5 kHz"]].forEach(([f,l])=>{
+    const x=Math.log(f/F0)/Math.log(F1/F0)*W;
+    g2.beginPath();g2.moveTo(x,10);g2.lineTo(x,H-20);g2.stroke();
+    g2.fillText(l,x,H-5);
+  });
+  g2.textAlign="left";g2.fillText("Deep",2,H-5);g2.textAlign="right";g2.fillText("Bright",W-2,H-5);
+
+  g2.beginPath();g2.moveTo(0,H-22);
+  for(let i=0;i<NP;i++)g2.lineTo(xOf(i),yOf(staticDb[i]));
+  g2.lineTo(W,H-22);g2.closePath();
+  g2.globalAlpha=.55;g2.fillStyle=col;g2.fill();g2.globalAlpha=1;
+  g2.beginPath();for(let i=0;i<NP;i++){const x=xOf(i),y=yOf(staticDb[i]);i?g2.lineTo(x,y):g2.moveTo(x,y)}
+  g2.strokeStyle=col;g2.lineWidth=2;g2.stroke();
+
+  if(playing&&A){
+    if(!liveBuf)liveBuf=new Float32Array(A.an.frequencyBinCount);
+    A.an.getFloatFrequencyData(liveBuf);
+    const bw=ctx.sampleRate/A.an.fftSize,vals=new Float32Array(NP);let mx=-1e9;
+    for(let i=0;i<NP;i++){
+      const lo=Math.max(1,Math.floor(freqs[i]*0.94/bw)),hi=Math.max(lo,Math.ceil(freqs[i]*1.06/bw));
+      let s=0,c=0;for(let j=lo;j<=hi&&j<liveBuf.length;j++){s+=Math.pow(10,liveBuf[j]/10);c++}
+      vals[i]=10*Math.log10(s/Math.max(c,1)+1e-20);
+      if(vals[i]>mx)mx=vals[i];
+    }
+    g2.beginPath();
+    for(let i=0;i<NP;i++){const x=xOf(i),y=yOf(vals[i]-mx);i?g2.lineTo(x,y):g2.moveTo(x,y)}
+    g2.strokeStyle=ink;g2.globalAlpha=.7;g2.lineWidth=1.2;g2.stroke();g2.globalAlpha=1;
+  }
+  requestAnimationFrame(frame);
+}
+
+syncSliders();renderSleep();resize();ui();requestAnimationFrame(frame);
+
+/* ---------- offline ---------- */
+if("serviceWorker" in navigator&&location.protocol!=="file:"){
+  navigator.serviceWorker.register("sw.js").then(()=>navigator.serviceWorker.ready).then(()=>{
+    $("offline").textContent="It also works offline now.";
+  }).catch(()=>{});
+}
+})();
+</script>
+</body>
+</html>
