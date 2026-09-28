@@ -8,7 +8,6 @@
 <meta name="theme-color" content="#E7E1DC">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -61,8 +60,7 @@ canvas{display:block;width:100%;height:170px}
 h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.35rem;margin:30px 0 4px}
 .ctl{padding:16px 0;border-bottom:1px solid var(--line)}
 .ctl:last-child{border-bottom:0}
-.ctl-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.ctl-name{font-weight:600}
+.ctl-name{display:block;font-weight:600}
 .ctl-hint{color:var(--muted);font-size:.88rem;margin:2px 0 10px}
 .ends{display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem;margin-top:4px}
 .ctl.dim{opacity:.45}
@@ -381,7 +379,7 @@ Object.keys(PRESETS).forEach(n=>{
 function addSlider(parent,c){
   const d=document.createElement("div");d.className="ctl";d.dataset.k=c.k;
   const id="s-"+c.k;
-  d.innerHTML='<div class="ctl-head"><label class="ctl-name" for="'+id+'">'+c.name+'</label></div>'+
+  d.innerHTML='<label class="ctl-name" for="'+id+'">'+c.name+'</label>'+
     '<div class="ctl-hint">'+c.hint+'</div>'+
     '<input type="range" id="'+id+'" min="0" max="'+(c.max||100)+'" step="1">'+
     '<div class="ends"><span>'+c.l+'</span><span>'+c.r+'</span></div>';

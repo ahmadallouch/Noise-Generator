@@ -9,7 +9,6 @@ const ASSETS = [
   "./fonts/figtree-latin.woff2",
   "./fonts/fraunces-latin.woff2",
   "./icons/icon.svg",
-  "./icons/favicon-32.png",
   "./icons/apple-touch-icon.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
