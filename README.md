@@ -69,6 +69,10 @@ Issues and pull requests are welcome. The whole app is `index.html`, plus `sw.js
 3. If you change any file the app loads, bump `VERSION` in `sw.js` so installed copies update.
 4. New noise colors need a cited definition and a measured result.
 
+## License
+
+MIT, see [LICENSE](LICENSE). Fonts are separately licensed, below.
+
 ## Credits
 
 Fonts: [Fraunces](https://github.com/undercasetype/Fraunces) and [Figtree](https://github.com/erikdkennedy/figtree), SIL Open Font License (see `fonts/`).
