@@ -57,6 +57,11 @@ canvas{display:block;width:100%;height:170px}
 .pill{font:inherit;font-size:.92rem;border:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .pill[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--line)}
+.colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}
+.color{font:inherit;text-align:left;border:1px solid var(--line);background:transparent;color:var(--ink);padding:10px 14px;border-radius:14px;cursor:pointer}
+.color[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.color b{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.95rem}
+.color small{display:block;font-size:.8rem;opacity:.75;margin-top:2px}
 h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.35rem;margin:30px 0 4px}
 .ctl{padding:16px 0;border-bottom:1px solid var(--line)}
 .ctl:last-child{border-bottom:0}
@@ -108,7 +113,7 @@ footer a{color:inherit}
   <p class="caption">Left is deep, right is bright. Taller means louder at that pitch. The shaded shape is your settings; the thin line is what is playing right now.</p>
 
   <h2>Noise color</h2>
-  <div class="chips" id="colors"></div>
+  <div class="colors" id="colors"></div>
 
   <div id="main-controls"></div>
 
@@ -137,11 +142,11 @@ footer a{color:inherit}
 /* tone runs 0..400: 0 brown, 100 pink, 200 white, 300 blue, 400 violet, blends in between.
    0..100 is the original brown-to-pink range, so older saved settings still mean the same thing. */
 const COLORS=[
-  {n:"Brown",v:"--c-brown",slope:-6},
-  {n:"Pink",v:"--c-pink",slope:-3},
-  {n:"White",v:"--c-white",slope:0},
-  {n:"Blue",v:"--c-blue",slope:3},
-  {n:"Violet",v:"--c-violet",slope:6}
+  {n:"Brown",v:"--c-brown",slope:-6,use:"Deep. Sleep and focus"},
+  {n:"Pink",v:"--c-pink",slope:-3,use:"Soft. Sleep and calm"},
+  {n:"White",v:"--c-white",slope:0,use:"Even. Masks voices"},
+  {n:"Blue",v:"--c-blue",slope:3,use:"Crisp. Masks high hiss"},
+  {n:"Violet",v:"--c-violet",slope:6,use:"Sharp. Tinnitus masking"}
 ];
 const TMAX=(COLORS.length-1)*100;
 const DEF={tone:50,weight:0,hiss:35,relief:25,move:0,pace:35,width:70,vol:40};
@@ -353,7 +358,7 @@ function ui(){
   document.querySelectorAll(".ctl[data-k=pace]").forEach(el=>el.classList.toggle("dim",S.move==0));
   const match=Object.keys(PRESETS).find(n=>Object.keys(DEF).every(k=>PRESETS[n][k]==S[k]));
   document.querySelectorAll("#presets .pill").forEach(b=>b.setAttribute("aria-pressed",b.textContent===match?"true":"false"));
-  document.querySelectorAll("#colors .pill").forEach((b,i)=>b.setAttribute("aria-pressed",S.tone===i*100?"true":"false"));
+  document.querySelectorAll("#colors .color").forEach((b,i)=>b.setAttribute("aria-pressed",S.tone===i*100?"true":"false"));
   if(playing&&"mediaSession" in navigator&&navigator.mediaSession.metadata){try{navigator.mediaSession.metadata.title=nameFor(S.tone)}catch(e){}}
   drawStatic=true;
 }
@@ -361,8 +366,8 @@ function ui(){
 function renderColors(){
   const w=$("colors");w.innerHTML="";
   COLORS.forEach((c,i)=>{
-    const b=document.createElement("button");b.className="pill";
-    b.innerHTML='<span class="dot" style="background:'+rgb(P.colors[i])+'"></span>'+c.n;
+    const b=document.createElement("button");b.className="color";
+    b.innerHTML='<b><span class="dot" style="background:'+rgb(P.colors[i])+'"></span>'+c.n+'</b><small>'+c.use+'</small>';
     b.onclick=()=>{S.tone=i*100;syncSliders();save();apply();ui()};
     w.appendChild(b);
   });

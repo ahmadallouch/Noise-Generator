@@ -1,6 +1,6 @@
 // Offline support. Everything the app needs is precached on install.
 // Bump VERSION whenever a file below changes so installed copies pick it up.
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = "a-noise-" + VERSION;
 const ASSETS = [
   "./",
